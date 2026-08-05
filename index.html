@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>金创翼月度运营简报编辑器</title>
+  <style>
+    :root{--ink:#17273f;--muted:#697489;--blue:#155dd7;--dark:#0a367f;--orange:#ff9638;--paper:#f8f7f2;--line:#dfe4eb}
+    *{box-sizing:border-box}html{background:#e9edf3}body{margin:0;color:var(--ink);background:radial-gradient(circle at 15% 0,rgba(21,93,215,.1),transparent 28rem),#e9edf3;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+    button,input,textarea{font:inherit}button{cursor:pointer}.app{min-height:100vh;padding-top:72px}
+    .topbar{position:fixed;z-index:20;inset:0 0 auto;height:72px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.92);border-bottom:1px solid rgba(23,39,63,.09);backdrop-filter:blur(18px)}
+    .brand{display:flex;align-items:center;gap:12px}.mark{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#fff;font-weight:800;background:linear-gradient(145deg,var(--blue),var(--dark))}
+    .brand strong,.brand small{display:block}.brand small{margin-top:3px;color:var(--muted)}.toolbar{display:flex;gap:8px}.toolbar button{border:0;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:650}
+    .ghost{background:#edf1f6;color:var(--ink)}.ghost:disabled{cursor:not-allowed;color:#a4adba}.primary{color:#fff;background:var(--blue)}
+    .workspace{width:min(1120px,calc(100% - 32px));margin:auto;padding:42px 0 72px;display:grid;grid-template-columns:210px minmax(0,820px);justify-content:center;align-items:start;gap:28px}
+    .tips{position:sticky;top:105px;padding:10px}.tips em{display:inline-block;padding:6px 10px;border-radius:999px;color:var(--blue);background:rgba(21,93,215,.1);font-size:11px;font-style:normal;font-weight:700}
+    .tips h2{font-size:18px;line-height:1.45}.tips p{color:var(--muted);font-size:13px;line-height:1.75}.tips span{display:block;margin-top:12px;color:#556176;font-size:12px}
+    .poster{overflow:hidden;min-height:1100px;background:var(--paper);box-shadow:0 24px 70px rgba(22,39,64,.14)}
+    .hero{position:relative;padding:45px 58px 50px;min-height:325px;color:#fff;background:linear-gradient(110deg,rgba(8,45,112,.97),rgba(21,93,215,.88))}
+    .hero:after{content:"";position:absolute;top:-150px;right:-130px;width:360px;height:360px;border:70px solid rgba(255,255,255,.1);border-radius:50%}.eyebrow{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.16em;opacity:.72}
+    .subtitle,.title{position:relative;z-index:1;display:block;width:100%;border:0;outline:0;color:#fff;background:transparent}.subtitle{margin-top:50px;font-size:12px;letter-spacing:.14em}.title{height:110px;margin-top:10px;resize:none;font-size:48px;line-height:1.08;font-weight:800;letter-spacing:-.04em}
+    .hero-note{display:flex;align-items:center;gap:16px;font-size:12px}.hero-note b{padding:7px 10px;color:#062e72;background:var(--orange);border-radius:3px}
+    .modules{padding:18px 58px 28px}.module{position:relative;display:grid;grid-template-columns:48px 1fr;gap:20px;padding:36px 0 32px;border-bottom:1px solid var(--line)}.index{padding-top:6px;color:var(--blue);font:italic 27px Georgia,serif}
+    .actions{position:absolute;right:0;top:10px;display:flex;gap:4px;opacity:0}.module:hover .actions{opacity:1}.actions button{width:27px;height:27px;padding:0;border:0;border-radius:6px;background:#e8ecf1}.actions .danger:hover{color:#fff;background:#d84e4e}
+    .module input,.module textarea{border:0;outline:0;background:transparent}.kicker{width:100%;color:var(--blue);font-size:10px;font-weight:800;letter-spacing:.18em}.title-row{display:grid;grid-template-columns:1fr 180px;align-items:end;gap:18px;margin-top:8px}.module-title{min-width:0;width:100%;font-size:28px;font-weight:760;letter-spacing:-.04em}
+    .metric{display:flex;align-items:baseline}.metric input:first-child{width:65px;color:var(--blue);text-align:right;font:700 38px Georgia,serif}.metric input:last-child{width:110px;color:var(--muted);font-size:11px}.description{width:100%;margin-top:14px;resize:vertical;color:#596579;font-size:13px;line-height:1.85}
+    .images{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.photo,.paste{position:relative;overflow:hidden;min-height:116px;border-radius:8px}.photo img{display:block;width:100%;height:100%;min-height:116px;max-height:230px;object-fit:cover}.photo button{position:absolute;right:6px;top:6px;width:24px;height:24px;border:0;border-radius:50%;color:#fff;background:rgba(10,20,35,.72)}
+    .paste{display:grid;place-content:center;place-items:center;gap:4px;border:1px dashed #b7c2d2;color:#6f7c90;background:rgba(255,255,255,.55)}.paste.active{border-color:var(--blue);color:var(--blue);background:#fff}.paste b{font-size:11px}.paste small{font-size:9px}.paste span{font-size:20px}
+    footer{margin:0 58px;padding:22px 0 32px;display:flex;justify-content:space-between;color:#8a93a3;border-top:1px solid var(--line);font-size:9px;letter-spacing:.12em}
+    @media(max-width:850px){.workspace{grid-template-columns:1fr}.tips{display:none}}@media(max-width:620px){.app{padding-top:124px}.topbar{height:124px;padding:12px 14px;align-content:center;flex-wrap:wrap}.toolbar{width:100%}.toolbar button{flex:1;padding:9px 5px}.workspace{width:calc(100% - 20px);padding-top:16px}.hero{padding:34px 24px}.title{font-size:34px}.modules{padding:12px 24px}.module{grid-template-columns:34px 1fr;gap:10px}.title-row{grid-template-columns:1fr}.metric input:first-child{text-align:left}.images{grid-template-columns:1fr 1fr}.actions{opacity:1}}
+    @page{size:A4 portrait;margin:0}@media print{html,body{background:#fff}.no-print{display:none!important}.app{padding:0}.workspace{display:block;width:100%;padding:0}.poster{width:100%;min-height:100vh;box-shadow:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style>
+</head>
+<body>
+<main class="app" id="app">
+  <header class="topbar no-print">
+    <div class="brand"><div class="mark">翼</div><div><strong>金创翼 · 月报工坊</strong><small>离线使用 · 自动保存</small></div></div>
+    <div class="toolbar">
+      <button class="ghost" id="undo" disabled>↶ 撤销</button>
+      <button class="ghost" id="add">＋ 添加板块</button>
+      <button class="ghost" onclick="window.print()">打印 / PDF</button>
+      <button class="primary" id="exportPoster">导出高清海报</button>
+    </div>
+  </header>
+  <section class="workspace">
+    <aside class="tips no-print"><em>编辑指南</em><h2>直接点击海报上的文字</h2><p>所有修改保存在当前浏览器。点击某个板块的粘贴区，再按 Ctrl/⌘ + V 插入截图。</p><span>01　编辑本月数据与亮点</span><span>02　复制截图并直接粘贴</span><span>03　撤销或打印为 PDF</span></aside>
+    <article class="poster">
+      <div class="hero">
+        <div class="eyebrow"><span>JIN CHUANG YI</span><span>MONTHLY / 2026</span></div>
+        <input class="subtitle" id="subtitle" aria-label="副标题">
+        <textarea class="title" id="mainTitle" rows="2" aria-label="简报标题"></textarea>
+        <div class="hero-note"><b>运营成果沉淀</b><span>让优质内容被看见</span></div>
+      </div>
+      <div class="modules" id="modules"></div>
+      <footer><span>金创翼新媒体赋能</span><span>聚合 · 提效 · 共创</span></footer>
+    </article>
+  </section>
+</main>
+<script>
+  const defaults=[
+    {id:"features",kicker:"功能进展",title:"本月功能上新",count:"12",unit:"个功能点",description:"围绕新媒体运营效率与内容生产体验，持续优化核心功能。点击这里填写本月重点功能、应用场景及业务价值。",images:[]},
+    {id:"insight",kicker:"行业观察",title:"新媒体同业洞察",count:"4",unit:"期内容",description:"聚焦同业优秀实践与重要热点资讯。点击这里补充热点背景、同业动作、核心判断及可借鉴方向。",images:[]},
+    {id:"templates",kicker:"内容资产",title:"模板素材上新",count:"18",unit:"个小红书模板",description:"持续沉淀高质量内容模板，覆盖品牌传播、产品推广与活动运营等场景。点击这里填写本月上新亮点。",images:[]},
+    {id:"tips",kicker:"实用指南",title:"使用技巧锦囊",count:"6",unit:"个实用技巧",description:"沉淀高频功能的使用方法与提效技巧。点击这里填写操作步骤、适用场景及推荐用法。",images:[]}
+  ];
+  const key="jcy-offline-monthly-brief-v2",history=[];
+  const mainTitle=document.querySelector("#mainTitle"),subtitle=document.querySelector("#subtitle"),modules=document.querySelector("#modules");
+  let pasteTarget="features";
+  let state={title:"金创翼8月运营简报",subtitle:"NEW MEDIA ENABLEMENT · MONTHLY BRIEF",modules:defaults};
+  try{const saved=JSON.parse(localStorage.getItem(key));if(saved)state=saved}catch(e){}
+  function snapshot(){history.push(JSON.stringify(state));if(history.length>50)history.shift();document.querySelector("#undo").disabled=false}
+  function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch(e){alert("图片较大，浏览器自动保存空间不足。建议删除部分图片后重试。")}}
+  function changeModule(id,field,value){snapshot();state.modules=state.modules.map(m=>m.id===id?{...m,[field]:value}:m);save();render()}
+  function render(){
+    mainTitle.value=state.title;subtitle.value=state.subtitle;
+    modules.innerHTML=state.modules.map((m,i)=>`
+      <section class="module">
+        <div class="actions no-print"><button onclick="move('${m.id}',-1)">↑</button><button onclick="move('${m.id}',1)">↓</button><button class="danger" onclick="removeModule('${m.id}')">×</button></div>
+        <div class="index">${String(i+1).padStart(2,"0")}</div>
+        <div>
+          <input class="kicker" value="${esc(m.kicker)}" onchange="changeModule('${m.id}','kicker',this.value)">
+          <div class="title-row"><input class="module-title" value="${esc(m.title)}" onchange="changeModule('${m.id}','title',this.value)"><div class="metric"><input value="${esc(m.count)}" onchange="changeModule('${m.id}','count',this.value)"><input value="${esc(m.unit)}" onchange="changeModule('${m.id}','unit',this.value)"></div></div>
+          <textarea class="description" rows="3" onchange="changeModule('${m.id}','description',this.value)">${esc(m.description)}</textarea>
+          <div class="images">${m.images.map((src,n)=>`<div class="photo"><img src="${src}" alt="成果截图"><button class="no-print" onclick="removeImage('${m.id}',${n})">×</button></div>`).join("")}
+            <button class="paste no-print ${pasteTarget===m.id?"active":""}" onclick="pasteTarget='${m.id}';render()"><span>⌘V</span><b>${pasteTarget===m.id?"现在可直接粘贴图片":"点击后粘贴图片"}</b><small>复制截图后按 Ctrl/⌘ + V</small></button>
+          </div>
+        </div>
+      </section>`).join("");
+  }
+  function esc(v){return String(v).replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;")}
+  function move(id,d){const i=state.modules.findIndex(m=>m.id===id),j=i+d;if(j<0||j>=state.modules.length)return;snapshot();[state.modules[i],state.modules[j]]=[state.modules[j],state.modules[i]];save();render()}
+  function removeModule(id){snapshot();state.modules=state.modules.filter(m=>m.id!==id);save();render()}
+  function removeImage(id,n){snapshot();state.modules=state.modules.map(m=>m.id===id?{...m,images:m.images.filter((_,i)=>i!==n)}:m);save();render()}
+  mainTitle.onchange=()=>{snapshot();state.title=mainTitle.value;save()};subtitle.onchange=()=>{snapshot();state.subtitle=subtitle.value;save()};
+  document.querySelector("#add").onclick=()=>{snapshot();state.modules.push({id:"m"+Date.now(),kicker:"新增板块",title:"点击填写板块标题",count:"0",unit:"项内容",description:"点击这里填写本月工作成果、亮点内容及业务价值。",images:[]});save();render()};
+  document.querySelector("#undo").onclick=()=>{const last=history.pop();if(!last)return;state=JSON.parse(last);save();render();document.querySelector("#undo").disabled=!history.length};
+  document.querySelector("#app").addEventListener("paste",e=>{const files=[...e.clipboardData.items].filter(x=>x.type.startsWith("image/")).map(x=>x.getAsFile()).filter(Boolean);if(!files.length)return;e.preventDefault();snapshot();Promise.all(files.map(file=>new Promise(done=>{const r=new FileReader;r.onload=()=>done(r.result);r.readAsDataURL(file)}))).then(imgs=>{state.modules=state.modules.map(m=>m.id===pasteTarget?{...m,images:[...m.images,...imgs]}:m);save();render()})});
+  document.querySelector("#exportPoster").onclick=async function(){
+    const button=this,poster=document.querySelector(".poster"),clone=poster.cloneNode(true);
+    button.disabled=true;button.textContent="正在生成…";
+    try{
+      clone.querySelectorAll(".no-print").forEach(node=>node.remove());
+      clone.querySelectorAll("input").forEach(input=>{const div=document.createElement("div");div.className=input.className;div.textContent=input.value;input.replaceWith(div)});
+      clone.querySelectorAll("textarea").forEach(area=>{const div=document.createElement("div");div.className=area.className;div.textContent=area.value;div.style.whiteSpace="pre-wrap";area.replaceWith(div)});
+      clone.style.width=poster.offsetWidth+"px";clone.style.boxShadow="none";
+      const css=[...document.styleSheets].flatMap(sheet=>{try{return[...sheet.cssRules].map(rule=>rule.cssText)}catch(e){return[]}}).join("\n");
+      const width=poster.offsetWidth,height=poster.scrollHeight;
+      const html=new XMLSerializer().serializeToString(clone);
+      const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>${css}</style>${html}</div></foreignObject></svg>`;
+      const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
+      const link=document.createElement("a");link.download=(state.title||"金创翼运营简报")+".svg";link.href=url;
+      document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    }catch(error){
+      alert("海报生成失败，请刷新页面后再试。");
+    }finally{
+      button.disabled=false;button.textContent="导出高清海报";
+    }
+  };
+  render();
+</script>
+</body>
+</html>
