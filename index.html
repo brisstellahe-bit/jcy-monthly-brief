@@ -113,6 +113,7 @@
   document.querySelector("#add").onclick=()=>{snapshot();state.modules.push({id:"m"+Date.now(),kicker:"新增板块",title:"点击填写板块标题",count:"0",unit:"项内容",description:"点击这里填写本月工作成果、亮点内容及业务价值。",images:[]});save();render()};
   document.querySelector("#undo").onclick=()=>{const last=history.pop();if(!last)return;state=JSON.parse(last);save();render();document.querySelector("#undo").disabled=!history.length};
   document.querySelector("#app").addEventListener("paste",e=>{const files=[...e.clipboardData.items].filter(x=>x.type.startsWith("image/")).map(x=>x.getAsFile()).filter(Boolean);if(!files.length)return;e.preventDefault();snapshot();Promise.all(files.map(file=>new Promise(done=>{const r=new FileReader;r.onload=()=>done({src:r.result,width:31});r.readAsDataURL(file)}))).then(imgs=>{state.modules=state.modules.map(m=>m.id===pasteTarget?{...m,images:[...m.images,...imgs]}:m);save();render()})});
+  function downloadLongImage(blob,extension){const url=URL.createObjectURL(blob),link=document.createElement("a");link.download=(state.title||"金创翼运营简报")+"-长图."+extension;link.href=url;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)}
   document.querySelector("#exportPoster").onclick=async function(){
     const button=this,poster=document.querySelector(".poster"),clone=poster.cloneNode(true);
     button.disabled=true;button.textContent="正在生成…";
@@ -125,15 +126,15 @@
       const width=poster.offsetWidth,height=poster.scrollHeight;
       const html=new XMLSerializer().serializeToString(clone);
       const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>${css}</style>${html}</div></foreignObject></svg>`;
-      const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
-      const image=new Image();
-      await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=url});
-      const scale=Math.min(2,16000/Math.max(width,height)),canvas=document.createElement("canvas");canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);
-      const context=canvas.getContext("2d");context.scale(scale,scale);context.drawImage(image,0,0,width,height);
-      URL.revokeObjectURL(url);
-      const png=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("PNG 生成失败")),"image/png",1));
-      const pngUrl=URL.createObjectURL(png),link=document.createElement("a");link.download=(state.title||"金创翼运营简报")+"-长图.png";link.href=pngUrl;
-      document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(pngUrl),3000);
+      const svgBlob=new Blob([svg],{type:"image/svg+xml;charset=utf-8"});
+      try{
+        const url=URL.createObjectURL(svgBlob),image=new Image();
+        try{await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=url})}finally{URL.revokeObjectURL(url)}
+        const scale=Math.min(2,16000/Math.max(width,height)),canvas=document.createElement("canvas");canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);
+        const context=canvas.getContext("2d");context.scale(scale,scale);context.drawImage(image,0,0,width,height);
+        const png=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("PNG 生成失败")),"image/png",1));
+        downloadLongImage(png,"png");
+      }catch(conversionError){downloadLongImage(svgBlob,"svg")}
     }catch(error){
       alert("海报生成失败，请刷新页面后再试。");
     }finally{
