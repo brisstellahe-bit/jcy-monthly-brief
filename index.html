@@ -114,28 +114,31 @@
   document.querySelector("#undo").onclick=()=>{const last=history.pop();if(!last)return;state=JSON.parse(last);save();render();document.querySelector("#undo").disabled=!history.length};
   document.querySelector("#app").addEventListener("paste",e=>{const files=[...e.clipboardData.items].filter(x=>x.type.startsWith("image/")).map(x=>x.getAsFile()).filter(Boolean);if(!files.length)return;e.preventDefault();snapshot();Promise.all(files.map(file=>new Promise(done=>{const r=new FileReader;r.onload=()=>done({src:r.result,width:31});r.readAsDataURL(file)}))).then(imgs=>{state.modules=state.modules.map(m=>m.id===pasteTarget?{...m,images:[...m.images,...imgs]}:m);save();render()})});
   function downloadLongImage(blob,extension){const url=URL.createObjectURL(blob),link=document.createElement("a");link.download=(state.title||"金创翼运营简报")+"-长图."+extension;link.href=url;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)}
+  function loadPosterImage(src){return new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>resolve(null);image.src=src})}
+  function wrapCanvasText(context,text,maxWidth){const lines=[];String(text||"").split("\n").forEach(paragraph=>{if(!paragraph){lines.push("");return}let line="";for(const char of paragraph){const next=line+char;if(line&&context.measureText(next).width>maxWidth){lines.push(line);line=char}else line=next}if(line)lines.push(line)});return lines}
+  function drawTextLines(context,lines,x,y,lineHeight){lines.forEach((line,index)=>context.fillText(line,x,y+index*lineHeight))}
+  function makeImageRows(images,width){const rows=[];let row=[],used=0;images.forEach(item=>{const w=Math.max(width*.25,Math.min(width,width*((item.width||31)/100))),ratio=item.element?item.element.naturalHeight/item.element.naturalWidth:.65,h=Math.min(520,w*ratio);if(row.length&&used+w+10>width){rows.push(row);row=[];used=0}row.push({...item,w,h,x:used});used+=w+10});if(row.length)rows.push(row);return rows}
+  function drawContainedImage(context,image,x,y,w,h){if(!image)return;const ratio=Math.min(w/image.naturalWidth,h/image.naturalHeight),dw=image.naturalWidth*ratio,dh=image.naturalHeight*ratio;context.save();context.beginPath();context.roundRect(x,y,w,h,8);context.clip();context.fillStyle="#edf1f6";context.fillRect(x,y,w,h);context.drawImage(image,x+(w-dw)/2,y+(h-dh)/2,dw,dh);context.restore()}
+  async function createPosterPng(){
+    const W=820,contentX=126,contentW=636,measure=document.createElement("canvas").getContext("2d");
+    const prepared=await Promise.all(state.modules.map(async module=>({...module,images:await Promise.all((module.images||[]).map(async image=>({...image,element:await loadPosterImage(image.src)})))})));
+    const layouts=prepared.map(module=>{measure.font='13px "PingFang SC","Microsoft YaHei",sans-serif';const descriptionLines=wrapCanvasText(measure,module.description,contentW),rows=makeImageRows(module.images,contentW),imageHeight=rows.reduce((sum,row)=>sum+Math.max(...row.map(item=>item.h))+10,0),height=142+descriptionLines.length*24+(rows.length?18+imageHeight:0);return{module,descriptionLines,rows,height}});
+    const H=325+18+layouts.reduce((sum,item)=>sum+item.height,0)+76,scale=Math.min(2,16000/H),canvas=document.createElement("canvas");canvas.width=Math.round(W*scale);canvas.height=Math.round(H*scale);const context=canvas.getContext("2d");context.scale(scale,scale);
+    context.fillStyle="#f8f7f2";context.fillRect(0,0,W,H);
+    const gradient=context.createLinearGradient(0,0,W,325);gradient.addColorStop(0,"#082d70");gradient.addColorStop(1,"#155dd7");context.fillStyle=gradient;context.fillRect(0,0,W,325);
+    context.strokeStyle="rgba(255,255,255,.1)";context.lineWidth=70;context.beginPath();context.arc(790,-10,145,0,Math.PI*2);context.stroke();
+    context.fillStyle="rgba(255,255,255,.72)";context.font='10px "PingFang SC","Microsoft YaHei",sans-serif';context.fillText("JIN CHUANG YI",58,54);context.textAlign="right";context.fillText("MONTHLY / 2026",762,54);context.textAlign="left";
+    context.fillStyle="#fff";context.font='12px "PingFang SC","Microsoft YaHei",sans-serif';context.fillText(state.subtitle,58,115);context.font='800 48px "PingFang SC","Microsoft YaHei",sans-serif';const titleLines=wrapCanvasText(context,state.title,700).slice(0,2);drawTextLines(context,titleLines,58,178,54);
+    context.fillStyle="#ff9638";context.beginPath();context.roundRect(58,273,102,28,3);context.fill();context.fillStyle="#062e72";context.font='700 12px "PingFang SC","Microsoft YaHei",sans-serif';context.fillText("运营成果沉淀",68,292);context.fillStyle="#fff";context.font='12px "PingFang SC","Microsoft YaHei",sans-serif';context.fillText("让优质内容被看见",177,292);
+    let top=343;layouts.forEach((layout,index)=>{const {module,descriptionLines,rows,height}=layout;context.fillStyle="#155dd7";context.font='italic 27px Georgia,serif';context.fillText(String(index+1).padStart(2,"0"),58,top+48);context.font='800 10px "PingFang SC","Microsoft YaHei",sans-serif';context.fillText(module.kicker,contentX,top+42);context.fillStyle="#17273f";context.font='760 28px "PingFang SC","Microsoft YaHei",sans-serif';context.fillText(module.title,contentX,top+80);context.textAlign="right";context.fillStyle="#155dd7";context.font='700 38px Georgia,serif';context.fillText(module.count,690,top+80);context.fillStyle="#697489";context.font='11px "PingFang SC","Microsoft YaHei",sans-serif';context.fillText(module.unit,762,top+78);context.textAlign="left";context.fillStyle="#596579";context.font='13px "PingFang SC","Microsoft YaHei",sans-serif';drawTextLines(context,descriptionLines,contentX,top+111,24);let imageTop=top+111+descriptionLines.length*24+12;rows.forEach(row=>{const rowHeight=Math.max(...row.map(item=>item.h));row.forEach(item=>drawContainedImage(context,item.element,contentX+item.x,imageTop,item.w,item.h));imageTop+=rowHeight+10});context.strokeStyle="#dfe4eb";context.lineWidth=1;context.beginPath();context.moveTo(58,top+height-.5);context.lineTo(762,top+height-.5);context.stroke();top+=height});
+    context.fillStyle="#8a93a3";context.font='9px "PingFang SC","Microsoft YaHei",sans-serif';context.fillText("金创翼新媒体赋能",58,H-33);context.textAlign="right";context.fillText("聚合 · 提效 · 共创",762,H-33);context.textAlign="left";
+    return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("PNG 生成失败")),"image/png",1));
+  }
   document.querySelector("#exportPoster").onclick=async function(){
-    const button=this,poster=document.querySelector(".poster"),clone=poster.cloneNode(true);
+    const button=this;
     button.disabled=true;button.textContent="正在生成…";
     try{
-      clone.querySelectorAll(".no-print").forEach(node=>node.remove());
-      clone.querySelectorAll("input").forEach(input=>{const div=document.createElement("div");div.className=input.className;div.textContent=input.value;input.replaceWith(div)});
-      clone.querySelectorAll("textarea").forEach(area=>{const div=document.createElement("div");div.className=area.className;div.textContent=area.value;div.style.whiteSpace="pre-wrap";div.style.resize="none";div.style.overflow="visible";area.replaceWith(div)});
-      clone.querySelectorAll(".photo").forEach(photo=>photo.style.resize="none");
-      clone.style.width=poster.offsetWidth+"px";clone.style.boxShadow="none";
-      const css=[...document.styleSheets].flatMap(sheet=>{try{return[...sheet.cssRules].map(rule=>rule.cssText)}catch(e){return[]}}).join("\n");
-      const width=poster.offsetWidth,height=poster.scrollHeight;
-      const html=new XMLSerializer().serializeToString(clone);
-      const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>${css}</style>${html}</div></foreignObject></svg>`;
-      const svgBlob=new Blob([svg],{type:"image/svg+xml;charset=utf-8"});
-      try{
-        const url=URL.createObjectURL(svgBlob),image=new Image();
-        try{await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=url})}finally{URL.revokeObjectURL(url)}
-        const scale=Math.min(2,16000/Math.max(width,height)),canvas=document.createElement("canvas");canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);
-        const context=canvas.getContext("2d");context.scale(scale,scale);context.drawImage(image,0,0,width,height);
-        const png=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("PNG 生成失败")),"image/png",1));
-        downloadLongImage(png,"png");
-      }catch(conversionError){downloadLongImage(svgBlob,"svg")}
+      downloadLongImage(await createPosterPng(),"png");
     }catch(error){
       alert("海报生成失败，请刷新页面后再试。");
     }finally{
