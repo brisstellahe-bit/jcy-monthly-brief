@@ -78,14 +78,20 @@
     {id:"templates",kicker:"内容资产",title:"模板素材上新",count:"18",unit:"个小红书模板",description:"持续沉淀高质量内容模板，覆盖品牌传播、产品推广与活动运营等场景。点击这里填写本月上新亮点。",images:[]},
     {id:"tips",kicker:"实用指南",title:"使用技巧锦囊",count:"6",unit:"个实用技巧",description:"沉淀高频功能的使用方法与提效技巧。点击这里填写操作步骤、适用场景及推荐用法。",images:[]}
   ];
-  const key="jcy-offline-monthly-brief-v2",history=[];
+  const key="jcy-offline-monthly-brief-v2",dbName="jcy-monthly-brief-storage",history=[];
   const mainTitle=document.querySelector("#mainTitle"),subtitle=document.querySelector("#subtitle"),modules=document.querySelector("#modules");
-  let pasteTarget="features";
+  let pasteTarget="features",storageWarningShown=false;
   let state={title:"金创翼8月运营简报",subtitle:"NEW MEDIA ENABLEMENT · MONTHLY BRIEF",modules:defaults};
-  try{const saved=JSON.parse(localStorage.getItem(key));if(saved)state=saved}catch(e){}
-  state.modules=state.modules.map(m=>({...m,images:(m.images||[]).map(image=>typeof image==="string"?{src:image,width:31}:image)}));
+  let legacyState=null;try{legacyState=JSON.parse(localStorage.getItem(key));if(legacyState)state=legacyState}catch(e){}
+  function normalizeState(value){return{...value,modules:(value.modules||defaults).map(m=>({...m,images:(m.images||[]).map(image=>typeof image==="string"?{src:image,width:31}:image)}))}}
+  state=normalizeState(state);
+  function openStateDatabase(){return new Promise((resolve,reject)=>{const request=indexedDB.open(dbName,1);request.onupgradeneeded=()=>request.result.createObjectStore("documents");request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
+  async function loadLargeState(){const db=await openStateDatabase();return new Promise((resolve,reject)=>{const transaction=db.transaction("documents","readonly"),request=transaction.objectStore("documents").get("current");request.onsuccess=()=>resolve(request.result||null);request.onerror=()=>reject(request.error);transaction.oncomplete=()=>db.close()})}
+  async function saveLargeState(value){const db=await openStateDatabase();return new Promise((resolve,reject)=>{const transaction=db.transaction("documents","readwrite");transaction.objectStore("documents").put(value,"current");transaction.oncomplete=()=>{db.close();resolve()};transaction.onerror=()=>reject(transaction.error)})}
+  function saveTextFallback(){const compact={...state,modules:state.modules.map(module=>({...module,images:[]}))};try{localStorage.setItem(key,JSON.stringify(compact))}catch(e){localStorage.removeItem(key);localStorage.setItem(key,JSON.stringify(compact))}}
+  loadLargeState().then(saved=>{if(saved){state=normalizeState(saved);render()}else if(legacyState){saveLargeState(state).then(saveTextFallback)}}).catch(()=>{});
   function snapshot(){history.push(JSON.stringify(state));if(history.length>50)history.shift();document.querySelector("#undo").disabled=false}
-  function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch(e){alert("图片较大，浏览器自动保存空间不足。建议删除部分图片后重试。")}}
+  function save(){saveTextFallback();saveLargeState(state).catch(()=>{if(!storageWarningShown){storageWarningShown=true;alert("浏览器图片缓存已达到上限，请删除少量图片后重试。")}})}
   function changeModule(id,field,value){snapshot();state.modules=state.modules.map(m=>m.id===id?{...m,[field]:value}:m);save();render()}
   function render(){
     mainTitle.value=state.title;subtitle.value=state.subtitle;
@@ -112,7 +118,8 @@
   mainTitle.onchange=()=>{snapshot();state.title=mainTitle.value;save()};subtitle.onchange=()=>{snapshot();state.subtitle=subtitle.value;save()};
   document.querySelector("#add").onclick=()=>{snapshot();state.modules.push({id:"m"+Date.now(),kicker:"新增板块",title:"点击填写板块标题",count:"0",unit:"项内容",description:"点击这里填写本月工作成果、亮点内容及业务价值。",images:[]});save();render()};
   document.querySelector("#undo").onclick=()=>{const last=history.pop();if(!last)return;state=JSON.parse(last);save();render();document.querySelector("#undo").disabled=!history.length};
-  document.querySelector("#app").addEventListener("paste",e=>{const files=[...e.clipboardData.items].filter(x=>x.type.startsWith("image/")).map(x=>x.getAsFile()).filter(Boolean);if(!files.length)return;e.preventDefault();snapshot();Promise.all(files.map(file=>new Promise(done=>{const r=new FileReader;r.onload=()=>done({src:r.result,width:31});r.readAsDataURL(file)}))).then(imgs=>{state.modules=state.modules.map(m=>m.id===pasteTarget?{...m,images:[...m.images,...imgs]}:m);save();render()})});
+  function optimizePastedImage(file){return new Promise(resolve=>{const image=new Image(),url=URL.createObjectURL(file);image.onload=()=>{URL.revokeObjectURL(url);const limit=2560,scale=Math.min(1,limit/Math.max(image.naturalWidth,image.naturalHeight)),canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);canvas.toBlob(blob=>{const reader=new FileReader();reader.onload=()=>resolve({src:reader.result,width:31});reader.readAsDataURL(blob||file)},"image/webp",.92)};image.onerror=()=>{URL.revokeObjectURL(url);const reader=new FileReader();reader.onload=()=>resolve({src:reader.result,width:31});reader.readAsDataURL(file)};image.src=url})}
+  document.querySelector("#app").addEventListener("paste",e=>{const files=[...e.clipboardData.items].filter(x=>x.type.startsWith("image/")).map(x=>x.getAsFile()).filter(Boolean);if(!files.length)return;e.preventDefault();snapshot();Promise.all(files.map(optimizePastedImage)).then(imgs=>{state.modules=state.modules.map(m=>m.id===pasteTarget?{...m,images:[...m.images,...imgs]}:m);save();render()})});
   function downloadLongImage(blob,extension){const url=URL.createObjectURL(blob),link=document.createElement("a");link.download=(state.title||"金创翼运营简报")+"-长图."+extension;link.href=url;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)}
   function loadPosterImage(src){return new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>resolve(null);image.src=src})}
   function wrapCanvasText(context,text,maxWidth){const lines=[];String(text||"").split("\n").forEach(paragraph=>{if(!paragraph){lines.push("");return}let line="";for(const char of paragraph){const next=line+char;if(line&&context.measureText(next).width>maxWidth){lines.push(line);line=char}else line=next}if(line)lines.push(line)});return lines}
